@@ -1,5 +1,6 @@
 import requests, os,sys
 import config
+import datetime as dt
 from utilities.timefunctions import getCurrentTimeString
 from logging_utilities import ingestionLogWrite
 from datamodels import StockDailyInfo
@@ -37,7 +38,7 @@ def fetchDailyAdvantageToFile(stockOption = "TSLA", filepath = "data/raw/",outpu
         ingestionLogWrite(source = "DailyAdvantage",
                             status = "fail",
                             rows = 0,
-                            description = f"Error: {error}.")
+                            description = f"Error while fetching and writting to file: {error}.")
         
     return 
 
@@ -62,22 +63,42 @@ def fetchDailyAdvantageToJSON(stockOption = "TSLA", outputSize = "compact"):
 
     return
 
-def parseDailyAdvantageDict(responseDictionary, restrictDate = False):
+def parseDailyAdvantageDict(responseDictionary, filterDate = False, dateToFilter = "1/1/1900"):
     "Essa função vai receber um dicionário de resposta da requisição e retornar uma lista de objetos StockDailyInfo"
     
     entriesList = []
     
     try:
+        # O dicionário de resposta tem uma parte de metadados e
+        # uma parte contendo os dados temporais. Dos metadados
+        # estou apenas pegando o nome da ação. A variável entries
+        # vai guardar apenas os dados do corpo da requisição.
         entries = responseDictionary["Time Series (Daily)"]
         name = responseDictionary["Meta Data"]["2. Symbol"]
-        for entry in entries:
 
+        # Gerando um objeto do tipo dt.date() apenas se deseja
+        # filtrar as datas de entrada. Datas menores ou iguais à
+        # apontada em dateToFilter serão descartadas.
+        if filterDate:
+            dateFilter = dt.datetime.strptime(dateToFilter,"%d/%m/%Y").date()
+
+        # Iterando sobre as respostas.
+        for entry in entries:
+            # Se a data da entrada for menor ou igual à data apontada, 
+            # o objeto não é gerado e o loop apenas avança para a próxima entrada.
+            if dt.datetime.strptime(entry,"%Y-%m-%d").date() <= dateFilter:
+                continue
+            
+            # Gerando objeto do tipo StockDailyInfo para cada entrada da resposta.
             newEntry = StockDailyInfo.getFromDailyAdvantageDict(stockName = name, date = entry, info = entries[entry])
-           
-            if not newEntry.name == "ERROR":
+            
+            # Apenas checando se o objeto foi construído corretamente.
+            if newEntry.name == name:
                 entriesList.append(newEntry)
+            
+        print(f"Generated {len(entriesList)} StockDailyInfo objects from {name}.")
 
     except Exception as error:
-        print(f"Error while parsing dict: {error}.")
+        print(f"Error while parsing response dict: {error}.")
 
     return entriesList
