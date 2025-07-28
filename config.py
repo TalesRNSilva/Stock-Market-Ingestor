@@ -4,4 +4,4 @@ import os
 
 load_dotenv()
 
-STOCK_API_KEY = os.getenv("ALPHA_VANTAGE_API_KEY")
+ALPHA_API_KEY = os.getenv("ALPHA_VANTAGE_API_KEY")
