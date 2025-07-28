@@ -8,7 +8,7 @@ def ingestionLogWrite(source = "unknown", filepath = "data/logs/ingestion.csv", 
     date = getCurrentTimeString("log")
 
     try:
-        with open(filepath, mode = "w", newline = "") as file:
+        with open(filepath, mode = "a", newline = "") as file:
             writer = csv.writer(file)
             writer.writerow([date,source,status,rows,description])
         print(f"Logfile {filepath} updated.")
