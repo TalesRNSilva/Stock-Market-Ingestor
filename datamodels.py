@@ -21,7 +21,8 @@ class StockDailyInfo:
     #        "4. close": "316.0600",
     #        "5. volume": "148227027"
     #   }
-    def getFromDailyAdvantageDict(date: str, info: dict, stockName = str):
+    @staticmethod
+    def getFromDailyAdvantageDict(date: str, info: dict, stockName: str):
         "Função que vai retornar um objeto StockDailyInfo a partir de dicionário do JSON da API do Daily Advantage."
         try: 
             date = dt.datetime.strptime(date, "%Y-%m-%d").date()
@@ -36,6 +37,7 @@ class StockDailyInfo:
             return StockDailyInfo.returnNullObject()
     
     # Retorna um objeto com entradas nulas.
+    @staticmethod
     def returnNullObject():
         return StockDailyInfo(date = dt.datetime.now().date(),
                               low = 0, high = 0, close = 0, volume = 0,

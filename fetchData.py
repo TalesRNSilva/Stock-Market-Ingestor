@@ -44,6 +44,7 @@ def fetchDailyAdvantageToFile(stockOption = "TSLA", filepath = "data/raw/",outpu
 
 def fetchDailyAdvantageToJSON(stockOption = "TSLA", outputSize = "compact"):
     "Essa função vai fazer um request para o site e devolver um dicionário da resposta."
+    # Lembrando que esse dicionário está dividido em metadados e corpo da requisição."
 
     url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={stockOption}&outputsize={outputSize}&apikey={config.ALPHA_API_KEY}"
 
@@ -86,8 +87,9 @@ def parseDailyAdvantageDict(responseDictionary, filterDate = False, dateToFilter
         for entry in entries:
             # Se a data da entrada for menor ou igual à data apontada, 
             # o objeto não é gerado e o loop apenas avança para a próxima entrada.
-            if dt.datetime.strptime(entry,"%Y-%m-%d").date() <= dateFilter:
-                continue
+            if filterDate:
+                if dt.datetime.strptime(entry,"%Y-%m-%d").date() <= dateFilter:
+                    continue
             
             # Gerando objeto do tipo StockDailyInfo para cada entrada da resposta.
             newEntry = StockDailyInfo.getFromDailyAdvantageDict(stockName = name, date = entry, info = entries[entry])
