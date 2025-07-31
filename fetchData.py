@@ -2,8 +2,8 @@ import requests, os,sys
 import config
 import datetime as dt
 from utilities.timefunctions import getCurrentTimeString
-from logging_utilities import ingestionLogWrite
-from datamodels import StockDailyInfo
+from logging_utilities import ingestionLogWrite, updateLastFetchDate
+from datamodels import StockDailyInfo, PGController
 
 # This will run a single script to get historical data from a company and store into a file.
 # File nomenclature - date and time of request _ option name _ output Size
@@ -64,7 +64,7 @@ def fetchDailyAdvantageToJSON(stockOption = "TSLA", outputSize = "compact"):
 
     return
 
-def parseDailyAdvantageDict(responseDictionary, filterDate = False, dateToFilter = "1/1/1900"):
+def parseDailyAdvantageDict(responseDictionary, filterDate = False, dateToFilter = dt.date(1900,1,1)):
     "Essa função vai receber um dicionário de resposta da requisição e retornar uma lista de objetos StockDailyInfo"
     
     entriesList = []
@@ -81,7 +81,7 @@ def parseDailyAdvantageDict(responseDictionary, filterDate = False, dateToFilter
         # filtrar as datas de entrada. Datas menores ou iguais à
         # apontada em dateToFilter serão descartadas.
         if filterDate:
-            dateFilter = dt.datetime.strptime(dateToFilter,"%d/%m/%Y").date()
+            dateFilter = dateToFilter
 
         # Iterando sobre as respostas.
         for entry in entries:
@@ -104,3 +104,56 @@ def parseDailyAdvantageDict(responseDictionary, filterDate = False, dateToFilter
         print(f"Error while parsing response dict: {error}.")
 
     return entriesList
+
+def initializeAllStocks(controller: PGController,
+                        stockList = config.ACTIVE_STOCKS,
+                        truncate = False,
+                        filterDate = False,
+                        outputSize = 'full'):
+        "Popula o DB com os dados das ações definidas no arquivo config.py."
+        # Se a opção truncate for True, deleta dos os dados da tabela.
+        if truncate: 
+            controller.query(f"truncate table {controller.stock_data_table};")
+        
+        for stock in stockList:
+            dictResponse = fetchDailyAdvantageToJSON(stockOption=stock, outputSize=outputSize)
+            if filterDate:
+                dateToFilter = controller.getLastUpdateDate(stock_name=stock)
+            else:
+                dateToFilter = dt.date(1900,1,1)
+            entryList = parseDailyAdvantageDict(dictResponse, filterDate = filterDate, dateToFilter=dateToFilter)
+            controller.insertStockInfoBulk(entryList)
+            lastDate = controller.getLastUpdateDate(stock).strftime('%Y-%m-%d')
+            updateLastFetchDate(stockName=stock, date=lastDate)
+
+def initializeStock(controller: PGController,
+                        stockname = 'TSLA',
+                        delete = False,
+                        filterDate = False,
+                        outputSize = 'full'):
+    "Essa função popula o DB com os valores de uma ação específica."
+    # Se parâmetro estiver marcado, remove os valores correspondentes àquela ação.
+    if delete:
+        controller.query(f"Delete from {controller.stock_data_table} where stock_name = {stockname}.")
+     
+    dictResponse = fetchDailyAdvantageToJSON(stockOption=stockname, outputSize=outputSize)
+    
+    if filterDate:
+        dateToFilter = controller.getLastUpdateDate(stock_name=stockname)
+    else:
+        dateToFilter = dt.date(1900,1,1)
+
+    entryList = parseDailyAdvantageDict(dictResponse, filterDate = filterDate, dateToFilter=dateToFilter)
+    controller.insertStockInfoBulk(entryList)
+    lastDate = controller.getLastUpdateDate(stockname).strftime('%Y-%m-%d')
+    updateLastFetchDate(stockName=stockname, date=lastDate)
+
+def updateStock(controller: PGController,
+                        stockname = 'TSLA',
+                        outputSize = 'compact'):
+    dictResponse = fetchDailyAdvantageToJSON(stockOption=stockname, outputSize=outputSize)
+    dateToFilter = controller.getLastUpdateDate(stock_name=stockname)
+    entryList = parseDailyAdvantageDict(dictResponse, filterDate = True, dateToFilter=dateToFilter)
+    controller.insertStockInfoBulk(entryList)
+    lastDate = controller.getLastUpdateDate(stockname).strftime('%Y-%m-%d')
+    updateLastFetchDate(stockName=stockname, date=lastDate)

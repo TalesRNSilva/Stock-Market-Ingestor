@@ -1,6 +1,6 @@
 from dataclasses import dataclass
-from config import DB_CREDENTIALS, TABLES_INFO
-from logging_utilities import ingestionLogWrite
+from config import DB_CREDENTIALS, TABLES_INFO, ACTIVE_STOCKS
+from logging_utilities import ingestionLogWrite, updateLastFetchDate
 import datetime as dt
 import psycopg2 as pg
 
@@ -92,12 +92,14 @@ class PGController:
                  port = DB_CREDENTIALS['port']):
         self.dbname = database_name
         # Criando o conector com o servidor PostGre
+        # Para documentação do objeto connection - https://www.psycopg.org/docs/connection.html
         self.connector = pg.connect(dbname = database_name,
                                     user = user,
                                     password = password)
         # Colocando a conexão no modo autocommit.
         self.connector.set_session(autocommit=True)
         # É a interface que executará os comandos.
+        # Documentação do objeto cursor - https://www.psycopg.org/docs/cursor.html#cursor
         self.cursor = self.connector.cursor()
     
         self.stock_info_table = 'stock_info'
@@ -109,6 +111,12 @@ class PGController:
 
     def commit(self):
         self.connector.commit()
+
+    def fetch(self):
+        return self.cursor.fetchone()
+    
+    def fetchall(self):
+        return self.cursor.fetchall()
 
     # Se o modo autocommit estiver ligado, mantenha a variável commit no falso.
     def insertStockInfoObject(self, stockInfo = StockDailyInfo.returnNullObject(), commit = False):
@@ -144,3 +152,35 @@ class PGController:
                           rows = successes,
                           description = f"{successes} {name} entries added into database out of {total}. {total-successes} rows not inserted.")
         return
+
+    # Retorna a data da última entrada de uma certa ação no DB.
+    def getLastUpdateDate(self, stock_name = 'STOCK'):
+        self.query(f"select max(date) from {self.stock_data_table} where stock_name = '{stock_name}' group by stock_name;")
+        queryResult = self.fetch()
+        if queryResult:
+            print(f"Última atualização de {stock_name}: {queryResult[0].strftime("%Y-%m-%d")}")
+            return queryResult[0]
+        else:
+            print("Ação não encontrada no DB. Retornando data coringa.")
+            return dt.date(1900,1,1)
+        
+    def getStocklistFromDB(self):
+        returnList = []
+        self.query(f"select stock_name from {self.stock_info_table};")
+        for item in self.fetchall():
+            returnList.append(item[0])
+        return returnList
+    
+    # Essa função é sensível. Só executar se o database estiver vazio.
+    # Ela vai pegar todos os nomes definidos na variável global ACTIVE_STOCKS,
+    # vai dar fetch de TODOS os dados pela API do DailyVantage (output size),
+    # vai inseri-los no DB e irá atualizar a data da última atualização no arquivo json.
+    # É possível definir os parâmetros para filtrar pela data da última atualização,
+    # ou apenas ignorar tal data.
+    
+
+    def updateAllUpdateDates(self, stockList = ACTIVE_STOCKS):
+        "Atualiza o arquivo json que rastreia a última atualização com base na última inserção no database."
+        for stock in stockList:
+            stockDate = self.getLastUpdateDate(stock).strftime('%Y-%m-%d')
+            updateLastFetchDate(stockName=stock, date=stockDate)
