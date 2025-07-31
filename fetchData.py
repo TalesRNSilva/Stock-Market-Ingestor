@@ -5,7 +5,7 @@ from utilities.timefunctions import getCurrentTimeString
 from logging_utilities import ingestionLogWrite
 from datamodels import StockDailyInfo
 
-# This will run a single script to get historical data from 5 companies.
+# This will run a single script to get historical data from a company and store into a file.
 # File nomenclature - date and time of request _ option name _ output Size
 def fetchDailyAdvantageToFile(stockOption = "TSLA", filepath = "data/raw/",outputSize = "compact"):
     url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={stockOption}&outputsize={outputSize}&apikey={config.ALPHA_API_KEY}"

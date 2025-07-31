@@ -1,12 +1,15 @@
 from dataclasses import dataclass
+from config import DB_CREDENTIALS, TABLES_INFO
+from logging_utilities import ingestionLogWrite
 import datetime as dt
+import psycopg2 as pg
 
 @dataclass
 class StockDailyInfo:
     "Classe que vai mapear entradas no database de informações diárias de opções de ações."
     date: dt.date
     name: str       # Nome da ação. E.g. TSLA
-    close: float   # Preço da ação no fechamento.
+    close: float    # Preço da ação no fechamento.
     high: float     # Maior valor no dia
     low: float      # Menor valor no dia   
     volume: int     # Número de ações disponíveis.
@@ -44,4 +47,100 @@ class StockDailyInfo:
                               name = "ERROR")
     
     def toStr(self):
-        return f"{self.date.strftime("%d/%m/%Y")} - {self.name} - {self.close}."
+        return f"{self.date.strftime("%Y-%m-%d")} - {self.name} - {self.close}."
+    
+    def __str__(self):
+        return f"Stock Info Object (name, date, low, high, self, close, volume)\n('{self.name}', '{self.datestr}', {self.low}, {self.high}, {self.close}, {self.volume})"
+
+    @property
+    def datestr(self):
+        return self.date.strftime("%Y-%m-%d")
+
+    def toDict(self):
+        return {
+            "date" : self.date.strftime("%Y-%m-%d"),
+            "name" : self.name,
+            "close": self.close,
+            "low"  : self.low,
+            "high" : self.high,
+            "volume" : self.volume
+        }
+    
+    @staticmethod
+    def fromDict(dictionary):
+        try:
+            stockObject = StockDailyInfo (
+            date = dt.datetime.strptime(dictionary["date"]).date(),
+            name = dictionary["name"],
+            high = dictionary["high"],
+            low =  dictionary["low"],
+            close = dictionary["close"],
+            volume = dictionary["volume"]
+        )
+        except Exception as e:
+            print(f"Error while building StockObject from Dictionary: {e}")
+            stockObject = StockDailyInfo.returnNullObject()
+        
+        return stockObject
+
+#Controlará acesso ao meu db
+class PGController:
+    def __init__(self, database_name = DB_CREDENTIALS['name'], 
+                 host = DB_CREDENTIALS['host'], 
+                 user = DB_CREDENTIALS['user'], 
+                 password = DB_CREDENTIALS['password'], 
+                 port = DB_CREDENTIALS['port']):
+        self.dbname = database_name
+        # Criando o conector com o servidor PostGre
+        self.connector = pg.connect(dbname = database_name,
+                                    user = user,
+                                    password = password)
+        # Colocando a conexão no modo autocommit.
+        self.connector.set_session(autocommit=True)
+        # É a interface que executará os comandos.
+        self.cursor = self.connector.cursor()
+    
+        self.stock_info_table = 'stock_info'
+        self.stock_data_table = 'stock_data'
+
+    # Apenas para facilitar os queries.    
+    def query(self, query = ""):
+        self.cursor.execute(query)
+
+    def commit(self):
+        self.connector.commit()
+
+    # Se o modo autocommit estiver ligado, mantenha a variável commit no falso.
+    def insertStockInfoObject(self, stockInfo = StockDailyInfo.returnNullObject(), commit = False):
+        try:
+            queryString = f"INSERT INTO public.{self.stock_data_table} (stock_name,date,low,high,close,volume) VALUES ('{stockInfo.name}', '{stockInfo.datestr}', {stockInfo.low}, {stockInfo.high}, {stockInfo.close}, {stockInfo.volume});"
+            print(queryString)
+            self.query(queryString)
+            if commit:
+                self.commit()
+            return 1
+        except Exception as e:
+            print(f"Value not inserted into DB. Error: {e}")
+            return 0
+        
+    def insertStockInfoBulk(self, stockObjectList = []):
+        if not stockObjectList:
+            print("StockInfo object list is empty. No entries added.")
+            return
+        # Recuperando o nome da ação para fins de registro.
+        name = stockObjectList[0].name
+        # Para rastrear taxa de sucesso da transação.
+        successes = 0
+        total = len(stockObjectList)
+        for stockInfo in stockObjectList:
+            # Se o modo autocommit estiver ligado, mantenha a variável commit no falso.
+            successes += self.insertStockInfoObject(stockInfo, commit = False)
+
+        status = "success" if successes else "fail"
+
+        print(f"Total of {successes} {name} entries out of {total} inserted into Database.")
+        ingestionLogWrite(source = "Daily Vantage",
+                          status = status,
+                          rows = successes,
+                          description = f"{successes} {name} entries added into database out of {total}. {total-successes} rows not inserted.")
+        return
