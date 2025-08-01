@@ -122,7 +122,7 @@ class PGController:
     def insertStockInfoObject(self, stockInfo = StockDailyInfo.returnNullObject(), commit = False):
         try:
             queryString = f"INSERT INTO public.{self.stock_data_table} (stock_name,date,low,high,close,volume) VALUES ('{stockInfo.name}', '{stockInfo.datestr}', {stockInfo.low}, {stockInfo.high}, {stockInfo.close}, {stockInfo.volume});"
-            print(queryString)
+            #print(queryString)
             self.query(queryString)
             if commit:
                 self.commit()
@@ -171,16 +171,42 @@ class PGController:
             returnList.append(item[0])
         return returnList
     
-    # Essa função é sensível. Só executar se o database estiver vazio.
-    # Ela vai pegar todos os nomes definidos na variável global ACTIVE_STOCKS,
-    # vai dar fetch de TODOS os dados pela API do DailyVantage (output size),
-    # vai inseri-los no DB e irá atualizar a data da última atualização no arquivo json.
-    # É possível definir os parâmetros para filtrar pela data da última atualização,
-    # ou apenas ignorar tal data.
-    
-
     def updateAllUpdateDates(self, stockList = ACTIVE_STOCKS):
         "Atualiza o arquivo json que rastreia a última atualização com base na última inserção no database."
         for stock in stockList:
             stockDate = self.getLastUpdateDate(stock).strftime('%Y-%m-%d')
             updateLastFetchDate(stockName=stock, date=stockDate)
+
+    def createStockTables(self):
+        "Cria as tabelas onde os dados serão armazenados."
+        print("Trying to generate tables into DB.")
+        try: 
+            stock_info_query =  "CREATE TABLE IF NOT EXISTS public.stock_info (sock_name varchar NOT NULL,description varchar NULL,full_name varchar NOT NULL,CONSTRAINT stock_info_pk PRIMARY KEY (stock_name));"
+            stock_data_query = 'CREATE TABLE IF NOT EXISTS public.stock_data (stock_name varchar NOT NULL,"date" date NOT NULL,low float4 NULL,high float4 NULL,"close" float4 NOT NULL,volume int4 NULL,CONSTRAINT unique_date_name UNIQUE (date, stock_name));'
+            fk_query = 'ALTER TABLE public.stock_data ADD CONSTRAINT stock_name FOREIGN KEY (stock_name) REFERENCES public.stock_info(stock_name);'
+            self.query(stock_info_query)
+            self.query(stock_data_query)
+            self.query(fk_query)
+            print("Tables created succefully.")
+        except Exception as e:
+            print(f"Not possible to create tables: {e}")
+
+    def clearAllStockData(self):
+        "Limpa os dados da tabela stock_data DB."
+        print(f"This will clear all the stock data on the table {self.stock_data_table}. Are you sure? (y/n)")
+        response = input()
+
+        if response in "yY":
+            self.query(f"TRUNCATE TABLE public.{self.stock_data_table};")
+        else:
+            print("Data not cleared.")
+
+    def clearStockData(self, stockName = 'TSLA'):
+        "Limpa os dados de determinada ação no DB."
+        print(f"This will clear all the stock data from {stockName} on the table {self.stock_data_table}. Are you sure? (y/n)\n")
+        
+        response = input()
+        if response in "yY":
+            self.query(f"DELETE FROM public.{self.stock_data_table} where stock_name = {stockName};")
+        else:
+            print("Data not cleared.")

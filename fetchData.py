@@ -113,7 +113,7 @@ def initializeAllStocks(controller: PGController,
         "Popula o DB com os dados das ações definidas no arquivo config.py."
         # Se a opção truncate for True, deleta dos os dados da tabela.
         if truncate: 
-            controller.query(f"truncate table {controller.stock_data_table};")
+            controller.clearAllStockData()
         
         for stock in stockList:
             dictResponse = fetchDailyAdvantageToJSON(stockOption=stock, outputSize=outputSize)
@@ -151,9 +151,42 @@ def initializeStock(controller: PGController,
 def updateStock(controller: PGController,
                         stockname = 'TSLA',
                         outputSize = 'compact'):
+    "Atualiza certa ação no DB, inserindo apenas dados posteriores à última inserção."
+    # Fazendo a requisição à API.
     dictResponse = fetchDailyAdvantageToJSON(stockOption=stockname, outputSize=outputSize)
+
+    # Determinando qual a data da última atualização da ação.
     dateToFilter = controller.getLastUpdateDate(stock_name=stockname)
+
+    # Filtrando o dicionário obtido como resposta com base na data,
+    # e parsando as entradas em objetos do tipo StockDailyInfo.
     entryList = parseDailyAdvantageDict(dictResponse, filterDate = True, dateToFilter=dateToFilter)
+
+    # Pedindo ao controlador para inserir as entradas resultantes no DB.
     controller.insertStockInfoBulk(entryList)
+    
+    # Atualizando data da última atualização no arquivo JSON adequado.
     lastDate = controller.getLastUpdateDate(stockname).strftime('%Y-%m-%d')
     updateLastFetchDate(stockName=stockname, date=lastDate)
+
+def testConnection(credentials = config.DB_CREDENTIALS) -> bool:
+    "Verificador básico de conexão."
+    try:
+        connection = PGController(database_name=credentials['name'],
+                                  user = credentials['user'],
+                                  password = credentials['password'])
+        return True
+    except Exception as e:
+        print(f"Connection error: {e}")
+        return False
+
+def updateStocks(controller:PGController,
+                 stockList:list = config.ACTIVE_STOCKS,
+                 outputSize:str = 'compact'):
+    "Atualiza todos as ações em uma lista."
+    
+    for stock in stockList:
+        updateStock(controller=controller,
+                    stockname=stock,
+                    outputSize=outputSize)
+
