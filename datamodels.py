@@ -147,7 +147,7 @@ class PGController:
         status = "success" if successes else "fail"
 
         print(f"Total of {successes} {name} entries out of {total} inserted into Database.")
-        ingestionLogWrite(source = "Daily Vantage",
+        ingestionLogWrite(source = "AlphaVantage",
                           status = status,
                           rows = successes,
                           description = f"{successes} {name} entries added into database out of {total}. {total-successes} rows not inserted.")
