@@ -76,7 +76,7 @@ Abraços, e qualquer dúvida sobre o código estou à disposição.
 #### Quickstart
 
 Se você quer testar o script, siga os seguintes passos:
-1. Gere uma API Key gratuita em Alpha Vantage. Insira a key na variável **ALPHA_API_KEY** em config.py
+1. Gere uma API Key gratuita em Alpha Vantage [(aqui)](https://www.alphavantage.co/support/#api-key). Insira a key na variável **ALPHA_API_KEY** em config.py
 2. Instancie um banco de dados PostgreSQL, com usuário com poderes suficientes para criar e alterar tabelas. Verifique se o Database instanciado tem um Schema chamado "public". Insira as credenciais do seu Database e informações de conexão em **DB_CREDENTIALS**, também em config.py. Você pode testar a conexão pela função testConnection().
 3. Para alterar a lista de ações, mude a variável **ACTIVE_STOCKS** em config.py.
 4. Agora usando main.py, rode a função **initializeDatabases**. Se tudo estiver correto, o programa imprimirá no console as entradas e o log será atualizado.
