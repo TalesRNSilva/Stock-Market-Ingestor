@@ -1,7 +1,11 @@
 import csv, os, json
 from utilities.timefunctions import getCurrentTimeString
 
-def ingestionLogWrite(source = "unknown", filepath = "data/logs/ingestion.csv", status = "success", rows = 0, description = "none"):
+def ingestionLogWrite(source = "unknown",
+                      filepath = "data/logs/ingestion.csv",
+                      status = "success",
+                      rows = 0,
+                      description = "none"):
     
     # Estrutura do CSV para logar ingestão de dados:
     # date / source / status / rows / description

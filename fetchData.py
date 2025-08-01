@@ -1,4 +1,4 @@
-import requests, os,sys
+import requests, os
 import config
 import datetime as dt
 from utilities.timefunctions import getCurrentTimeString
