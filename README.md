@@ -9,7 +9,9 @@ Em suma, essa é basicamente uma Pipeline de dados automatizada, com processos d
 ## Como funciona? 😯
 
 A maior parte da lógica do programa está no módulo fetchData.py. Usando a biblioteca *requests.py*, faço uma requisição à API do [Alpha Vantage](https://www.alphavantage.co/documentation/) dos dados diários de determinadas ações. O resultado é um dicionário contendo os dados relativos aos últimos 100 dias para aquela ação, incluíndo menor valor, maior valor e, mais importante para nossos propósitos, valor no fechamento.
+
 ![Exemplo de resposta.](images/image.png)
+
 (exemplo de resposta da requisição)
 
 Esses dados são filtrados com relação à última atualização de determinada ação no meu banco de dados. Se eles são mais atuais que a última entrada no DB, os dados são transformados em uma classe própria que criei para fazer interface com o Banco de Dados; se não, são descartados.
@@ -17,6 +19,7 @@ Esses dados são filtrados com relação à última atualização de determinada
 ![Log informando que nenhuma ação foi inserida.](images/image2.png)
 
 Por fim, os dados resultantes são inseridos um a um no meu DB. O script diário meramente toma uma lista de ações, definida em config.py, e chama a função de atualização em todas elas.
+
 ![Função updateStock](images/updateStock.png)
 
 ## Mais detalhes, por favor 📚
@@ -24,22 +27,33 @@ Por fim, os dados resultantes são inseridos um a um no meu DB. O script diário
 Meu programa tem apenas duas classes definidas, ambas em datamodels.py: a **StockDailyInfo**, uma dataclass criada para facilitar a validação dos dados e a inserção no DB, e a **PGConnector** (PG de PostGres), criada para administrar a conexão com meu banco de dados e parametrizar os queries.
 
 ![StockDailyInfo](images/stockdailyinfo.png)
+
 (classe StockDailyInfo)
+
 ![Pgcontroller](images/pgcontroller.png)
+
 (classe PGController)
 
 Importante frisar que usei um arquivo oculto chamado .env para definir certas variáveis de ambiente relacionadas à autenticação e outros dados sensíveis. Elas são recuperadas pelo módulo dotenv e carregadas pelo arquivo config.py. De importante, estão só minha API Key do Alpha Vantage e o user, password e nome do meu DB. Caso queira rodar esse script em sua máquina, é importante ajustar tais variáveis para garantir que o programa rode adequadamente.
 
 O programa também pressupõe que há um Schema chamado "public", e usa as tables "stock_data" e "stock_info" para realizar as operações. Por via das dúvidas, inseri uma função na classe PGController que instancia justamente essas tabelas no DB definindo, bem como uma função chamada initializeDatabase no módulo main.py que ambos cria tais tabelas e popula com dados iniciais para fazer o DB rodar.
+
 ![Initializing DB](images/initialize.png)
+
 (rodando a função initializeDatabase para popular meu DB com dados iniciais)
+
 ![DB Screenshot](images/dbshot1.png)
+
 (resultado visto pelo DBeaver)
 
 Também tenho uma função de log bem simples para manter os dados de inserção e poder verificar quaisquer falhas do script. Tais funções estão no arquivo logging_utilities.py, e o log fica salvo em data/logs.
+
 ![função de log](images/logfun.png)
+
 (função de log)
+
 ![exemplo de log](images/log.png)
+
 (exemplo de log)
 
 ## Próximos passos ✏
@@ -53,6 +67,7 @@ Se o script só fizesse uma requisição à API e inserisse os dados em um DB qu
 Agora pretendo usar tais dados para um simulador de plataforma de investimentos. A ideia é recuperar dados históricos como se fossem dados do dia, e permitir aos usuários "investirem" em ações, acompanhando o desenvolvimento dos investimentos diariamente. Também pretendo criar quatro inteligências artificiais para competirem entre si e ver que tipo de estratégia tem mais sucesso para as ações armazenadas. Mas isso é coisa para outros voos.
 
 ![Para não fingir](images/database.png)
+
 (para não dizer que não falei das flores)
 
 Abraços, e qualquer dúvida sobre o código estou à disposição.
