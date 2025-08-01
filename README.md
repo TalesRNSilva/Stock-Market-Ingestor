@@ -13,6 +13,7 @@ A maior parte da lógica do programa está no módulo fetchData.py. Usando a bib
 (exemplo de resposta da requisição)
 
 Esses dados são filtrados com relação à última atualização de determinada ação no meu banco de dados. Se eles são mais atuais que a última entrada no DB, os dados são transformados em uma classe própria que criei para fazer interface com o Banco de Dados; se não, são descartados.
+
 ![Log informando que nenhuma ação foi inserida.](images/image2.png)
 
 Por fim, os dados resultantes são inseridos um a um no meu DB. O script diário meramente toma uma lista de ações, definida em config.py, e chama a função de atualização em todas elas.
